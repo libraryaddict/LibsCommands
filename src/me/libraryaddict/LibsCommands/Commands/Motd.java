@@ -7,8 +7,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 
 public class Motd implements CommandExecutor {
-    public String description = "Displays the motd greeting";
     public String[] aliases = new String[0];
+    public String description = "Displays the motd greeting";
     private LibsCommands lib;
 
     public Motd(LibsCommands commands) {

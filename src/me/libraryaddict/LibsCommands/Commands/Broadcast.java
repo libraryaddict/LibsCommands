@@ -9,9 +9,9 @@ import org.bukkit.command.CommandSender;
 
 public class Broadcast implements CommandExecutor {
     public String[] aliases = new String[] { "bc" };
-    public String description = "Broadcasts to the server a special message";
     public String broadcastMessage = ChatColor.DARK_GREEN + "[" + ChatColor.GREEN + "Broadcast" + ChatColor.DARK_GREEN + "] "
             + ChatColor.RESET + "%s";
+    public String description = "Broadcasts to the server a special message";
 
     public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
         if (sender.hasPermission("bukkit.command.broadcast")) {

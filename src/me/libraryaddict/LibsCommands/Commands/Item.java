@@ -33,31 +33,6 @@ public class Item implements CommandExecutor {
         return m;
     }
 
-    private int[] parseString(String[] args) throws Exception {
-        int[] returns = new int[3];
-        returns[2] = 0;
-        returns[1] = 64;
-        String[] first = args[0].split(":");
-        Material m = getMaterial(first[0]);
-        if (m == null)
-            throw new Exception("Unrecognized item name " + first[0]);
-        returns[0] = m.getId();
-        if (first.length > 1) {
-            try {
-                returns[2] = Integer.parseInt(first[1]);
-            } catch (Exception ex) {
-                throw new Exception("Cannot parse " + args[0]);
-            }
-        }
-        if (args.length > 1)
-            try {
-                returns[1] = Integer.parseInt(args[1]);
-            } catch (Exception ex) {
-                throw new Exception("Cannot parse " + args[1]);
-            }
-        return returns;
-    }
-
     private int getMaxAllowed(CommandSender sender, int itemId) {
         for (PermissionAttachmentInfo permissions : sender.getEffectivePermissions()) {
             if (permissions.getPermission().startsWith("bukkit.command.item")) {
@@ -125,5 +100,30 @@ public class Item implements CommandExecutor {
         } else
             sender.sendMessage(ChatColor.RED + "You do not have permission to use this command");
         return true;
+    }
+
+    private int[] parseString(String[] args) throws Exception {
+        int[] returns = new int[3];
+        returns[2] = 0;
+        returns[1] = 64;
+        String[] first = args[0].split(":");
+        Material m = getMaterial(first[0]);
+        if (m == null)
+            throw new Exception("Unrecognized item name " + first[0]);
+        returns[0] = m.getId();
+        if (first.length > 1) {
+            try {
+                returns[2] = Integer.parseInt(first[1]);
+            } catch (Exception ex) {
+                throw new Exception("Cannot parse " + args[0]);
+            }
+        }
+        if (args.length > 1)
+            try {
+                returns[1] = Integer.parseInt(args[1]);
+            } catch (Exception ex) {
+                throw new Exception("Cannot parse " + args[1]);
+            }
+        return returns;
     }
 }

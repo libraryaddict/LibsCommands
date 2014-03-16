@@ -7,8 +7,8 @@ import org.bukkit.command.CommandSender;
 
 public class Hub implements CommandExecutor {
     public String[] aliases = new String[] { "lobby" };
-    public String description = "Sends you back to the hub";
     public String commandToRun = "server lobby";
+    public String description = "Sends you back to the hub";
 
     public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
         Bukkit.dispatchCommand(sender, commandToRun);

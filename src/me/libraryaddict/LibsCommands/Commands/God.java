@@ -9,8 +9,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 public class God implements CommandExecutor {
-    private LibsCommands lib;
     public String description = "Toggle invincibility";
+    private LibsCommands lib;
 
     public God(LibsCommands commands) {
         lib = commands;

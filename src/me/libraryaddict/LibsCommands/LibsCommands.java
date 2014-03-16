@@ -28,78 +28,47 @@ import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LibsCommands extends JavaPlugin implements Listener {
-    public HashMap<String, Long> mutes = new HashMap<String, Long>();
+    private String chatColorPerm;
     public List<String> god = new ArrayList<String>();
-    public Map<String, String> lastMsg = new HashMap<String, String>();
     public Map<String, List<String>> ignoring = new HashMap<String, List<String>>();
     public List<String> ignoringAll = new ArrayList<String>();
+    public Map<String, String> lastMsg = new HashMap<String, String>();
+    public HashMap<String, Long> mutes = new HashMap<String, Long>();
+
     public String staffPermission = "bukkit.command.ban";
 
-    public void onEnable() {
-        saveDefaultConfig();
-        Bukkit.getPluginManager().addPermission(new Permission("PrivateMessage", PermissionDefault.TRUE));
-        Bukkit.getPluginManager().registerEvents(this, this);
-        Bukkit.getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
-        staffPermission = getConfig().getString("StaffPermission");
-        chatColorPerm = getConfig().getString("ChatColorPermission");
-        final JavaPlugin plugin = this;
-        new CommandManager().load(plugin);
-        if (Bukkit.getPluginManager().getPermission("ThisIsUsedForMessaging") == null) {
-            Permission perm = new Permission("ThisIsUsedForMessaging", PermissionDefault.TRUE);
-            perm.setDescription("Used for messages in LibsCommands");
-            Bukkit.getPluginManager().addPermission(perm);
-        }
-    }
-
-    @EventHandler
-    public void signPlace(SignChangeEvent event) {
-        if (event.getPlayer().hasPermission("bukkit.command.sign")) {
-            for (int i = 0; i < 4; i++)
-                event.setLine(i, ChatColor.translateAlternateColorCodes('&', event.getLines()[i]));
-        }
-    }
-
-    @EventHandler
-    public void onRightClick(PlayerInteractEntityEvent event) {
-        if (event.getPlayer().hasMetadata("LibraryaddictTagTimer") && event.getRightClicked() instanceof LivingEntity) {
-            long timer = event.getPlayer().getMetadata("LibraryaddictTagTimer").get(0).asLong();
-            event.getPlayer().removeMetadata("LibraryaddictTagTimer", this);
-            String name = null;
-            if (event.getPlayer().hasMetadata("LibraryaddictTagName")) {
-                name = event.getPlayer().getMetadata("LibraryaddictTagName").get(0).asString();
-                event.getPlayer().removeMetadata("LibraryaddictTagName", this);
-            }
-            if (timer > System.currentTimeMillis()) {
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void commandPreprocess(PlayerCommandPreprocessEvent event) {
+        if (event.getMessage().toLowerCase().startsWith("/me ")) {
+            if (!event.getPlayer().hasPermission("bukkit.command.me") && getConfig().getBoolean("RemoveMe", true)) {
                 event.setCancelled(true);
-                if (name == null)
-                    ((LivingEntity) event.getRightClicked()).setCustomNameVisible(false);
-                else {
-                    ((LivingEntity) event.getRightClicked()).setCustomName(name);
-                    ((LivingEntity) event.getRightClicked()).setCustomNameVisible(true);
-                }
-                event.getPlayer().sendMessage(
-                        ChatColor.BLUE
-                                + event.getRightClicked().getType().name().toLowerCase()
-                                + " no"
-                                + (name == null ? " longer has a custom tag" : "w has a custom tag: '" + ChatColor.RESET + name
-                                        + ChatColor.BLUE + "'"));
+                event.getPlayer().chat(event.getPlayer().getName() + event.getMessage().substring(3));
+                return;
             }
+            if (event.getPlayer().hasPermission("bukkit.command.me"))
+                event.setMessage(ChatColor.translateAlternateColorCodes('&', event.getMessage()));
         }
     }
 
-    private String chatColorPerm;
+    public CommandSender getSender(String name) {
+        Set<Permissible> permissibles = Bukkit.getPluginManager().getPermissionSubscriptions("ThisIsUsedForMessaging");
+        for (Permissible permissible : permissibles) {
+            if (permissible instanceof CommandSender) {
+                CommandSender user = (CommandSender) permissible;
+                if (user.getName().equals(name))
+                    return user;
+            }
+        }
+        return null;
+    }
 
-    public String toReadableString(long time) {
-        String string = "%s days, %s hours, %s minutes.";
-        time -= time % 60;
-        time /= 60; // Is now in minutes
-        long minutes = time % 60;
-        time /= 60; // Now in hours
-        long hours = time % 24;
-        time /= 24; // Now in days
-        long days = time;
-        string = String.format(string, days, hours, minutes);
-        return string;
+    public boolean isNumeric(String str) {
+        try {
+            Double.parseDouble(str);
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+        return true;
     }
 
     @EventHandler
@@ -134,28 +103,6 @@ public class LibsCommands extends JavaPlugin implements Listener {
         }
     }
 
-    public boolean isNumeric(String str) {
-        try {
-            Double.parseDouble(str);
-        } catch (NumberFormatException nfe) {
-            return false;
-        }
-        return true;
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void commandPreprocess(PlayerCommandPreprocessEvent event) {
-        if (event.getMessage().toLowerCase().startsWith("/me ")) {
-            if (!event.getPlayer().hasPermission("bukkit.command.me") && getConfig().getBoolean("RemoveMe", true)) {
-                event.setCancelled(true);
-                event.getPlayer().chat(event.getPlayer().getName() + event.getMessage().substring(3));
-                return;
-            }
-            if (event.getPlayer().hasPermission("bukkit.command.me"))
-                event.setMessage(ChatColor.translateAlternateColorCodes('&', event.getMessage()));
-        }
-    }
-
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player) {
@@ -165,10 +112,20 @@ public class LibsCommands extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        ignoring.remove(event.getPlayer().getName());
-        lastMsg.remove(event.getPlayer().getName());
+    public void onEnable() {
+        saveDefaultConfig();
+        Bukkit.getPluginManager().addPermission(new Permission("PrivateMessage", PermissionDefault.TRUE));
+        Bukkit.getPluginManager().registerEvents(this, this);
+        Bukkit.getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
+        staffPermission = getConfig().getString("StaffPermission");
+        chatColorPerm = getConfig().getString("ChatColorPermission");
+        final JavaPlugin plugin = this;
+        new CommandManager().load(plugin);
+        if (Bukkit.getPluginManager().getPermission("ThisIsUsedForMessaging") == null) {
+            Permission perm = new Permission("ThisIsUsedForMessaging", PermissionDefault.TRUE);
+            perm.setDescription("Used for messages in LibsCommands");
+            Bukkit.getPluginManager().addPermission(perm);
+        }
     }
 
     @EventHandler
@@ -180,15 +137,58 @@ public class LibsCommands extends JavaPlugin implements Listener {
                             event.getPlayer().getName()));
     }
 
-    public CommandSender getSender(String name) {
-        Set<Permissible> permissibles = Bukkit.getPluginManager().getPermissionSubscriptions("ThisIsUsedForMessaging");
-        for (Permissible permissible : permissibles) {
-            if (permissible instanceof CommandSender) {
-                CommandSender user = (CommandSender) permissible;
-                if (user.getName().equals(name))
-                    return user;
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        ignoring.remove(event.getPlayer().getName());
+        lastMsg.remove(event.getPlayer().getName());
+    }
+
+    @EventHandler
+    public void onRightClick(PlayerInteractEntityEvent event) {
+        if (event.getPlayer().hasMetadata("LibraryaddictTagTimer") && event.getRightClicked() instanceof LivingEntity) {
+            long timer = event.getPlayer().getMetadata("LibraryaddictTagTimer").get(0).asLong();
+            event.getPlayer().removeMetadata("LibraryaddictTagTimer", this);
+            String name = null;
+            if (event.getPlayer().hasMetadata("LibraryaddictTagName")) {
+                name = event.getPlayer().getMetadata("LibraryaddictTagName").get(0).asString();
+                event.getPlayer().removeMetadata("LibraryaddictTagName", this);
+            }
+            if (timer > System.currentTimeMillis()) {
+                event.setCancelled(true);
+                if (name == null)
+                    ((LivingEntity) event.getRightClicked()).setCustomNameVisible(false);
+                else {
+                    ((LivingEntity) event.getRightClicked()).setCustomName(name);
+                    ((LivingEntity) event.getRightClicked()).setCustomNameVisible(true);
+                }
+                event.getPlayer().sendMessage(
+                        ChatColor.BLUE
+                                + event.getRightClicked().getType().name().toLowerCase()
+                                + " no"
+                                + (name == null ? " longer has a custom tag" : "w has a custom tag: '" + ChatColor.RESET + name
+                                        + ChatColor.BLUE + "'"));
             }
         }
-        return null;
+    }
+
+    @EventHandler
+    public void signPlace(SignChangeEvent event) {
+        if (event.getPlayer().hasPermission("bukkit.command.sign")) {
+            for (int i = 0; i < 4; i++)
+                event.setLine(i, ChatColor.translateAlternateColorCodes('&', event.getLines()[i]));
+        }
+    }
+
+    public String toReadableString(long time) {
+        String string = "%s days, %s hours, %s minutes.";
+        time -= time % 60;
+        time /= 60; // Is now in minutes
+        long minutes = time % 60;
+        time /= 60; // Now in hours
+        long hours = time % 24;
+        time /= 24; // Now in days
+        long days = time;
+        string = String.format(string, days, hours, minutes);
+        return string;
     }
 }

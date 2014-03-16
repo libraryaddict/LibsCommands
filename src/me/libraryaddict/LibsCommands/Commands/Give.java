@@ -33,40 +33,6 @@ public class Give implements CommandExecutor {
         return m;
     }
 
-    private int[] parseString(String[] args) throws Exception {
-        int[] returns = new int[3];
-        returns[2] = 0;
-        returns[1] = 64;
-        String[] first = args[0].split(":");
-        Material m = getMaterial(first[0]);
-        if (m == null)
-            throw new Exception("Unrecognized item name " + first[0]);
-        returns[0] = m.getId();
-        if (first.length > 1) {
-            try {
-                returns[2] = Integer.parseInt(first[1]);
-            } catch (Exception ex) {
-                throw new Exception("Cannot parse " + args[0]);
-            }
-        }
-        if (args.length > 1)
-            try {
-                returns[1] = Integer.parseInt(args[1]);
-            } catch (Exception ex) {
-                throw new Exception("Cannot parse " + args[1]);
-            }
-        return returns;
-    }
-
-    private boolean isNumeric(String s) {
-        try {
-            Integer.parseInt(s);
-            return true;
-        } catch (Exception ex) {
-            return false;
-        }
-    }
-
     private int getMaxAllowed(CommandSender sender, int itemId) {
         for (PermissionAttachmentInfo permissions : sender.getEffectivePermissions()) {
             if (permissions.getPermission().startsWith("bukkit.command.give")) {
@@ -89,6 +55,15 @@ public class Give implements CommandExecutor {
             }
         }
         return sender.hasPermission("bukkit.command.give") ? 9999 : -1;
+    }
+
+    private boolean isNumeric(String s) {
+        try {
+            Integer.parseInt(s);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
@@ -129,5 +104,30 @@ public class Give implements CommandExecutor {
         } else
             sender.sendMessage(ChatColor.RED + "You do not have permission to use this command");
         return true;
+    }
+
+    private int[] parseString(String[] args) throws Exception {
+        int[] returns = new int[3];
+        returns[2] = 0;
+        returns[1] = 64;
+        String[] first = args[0].split(":");
+        Material m = getMaterial(first[0]);
+        if (m == null)
+            throw new Exception("Unrecognized item name " + first[0]);
+        returns[0] = m.getId();
+        if (first.length > 1) {
+            try {
+                returns[2] = Integer.parseInt(first[1]);
+            } catch (Exception ex) {
+                throw new Exception("Cannot parse " + args[0]);
+            }
+        }
+        if (args.length > 1)
+            try {
+                returns[1] = Integer.parseInt(args[1]);
+            } catch (Exception ex) {
+                throw new Exception("Cannot parse " + args[1]);
+            }
+        return returns;
     }
 }
