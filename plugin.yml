@@ -1,0 +1,5 @@
+name: LibsCommands
+main: me.libraryaddict.LibsCommands.LibsCommands
+author: libraryaddict
+version: 2.2
+load: STARTUP

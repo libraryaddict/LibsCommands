@@ -1,0 +1,11 @@
+# Turn people doing /me into them saying their name.
+RemoveMe: true
+
+# Display a motd on join?
+DisplayMotd: false
+# The motd to display on join
+Motd: '&cWelcome %s to the server!\n&6Glad to see you here with us!'
+# The permission which doesn't allow someone to ignore you
+StaffPermission: bukkit.command.ban
+# The permission to use chatcolors
+ChatColorPermission: bukkit.command.chatcolors
