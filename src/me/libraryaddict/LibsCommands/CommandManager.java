@@ -2,13 +2,11 @@ package me.libraryaddict.LibsCommands;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.PluginCommand;
+import org.bukkit.command.PluginCommandYamlParser;
 import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -19,32 +17,18 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * User: Austin Date: 11/7/12 Time: 12:04 PM
  */
 public class CommandManager {
+    private Map<String, Map<String, Object>> commandsMap = new HashMap<String, Map<String, Object>>();
     private YamlConfiguration config;
     private File configFile;
     private boolean newFile = false;
-
-    private void unregisterCommand(String name) {
-        try {
-            Field known = SimpleCommandMap.class.getDeclaredField("knownCommands");
-            Field alias = SimpleCommandMap.class.getDeclaredField("aliases");
-            known.setAccessible(true);
-            alias.setAccessible(true);
-            Map<String, Command> knownCommands = (Map<String, Command>) known.get(getCommandMap());
-            Set<String> aliases = (Set<String>) alias.get(getCommandMap());
-            knownCommands.remove(name.toLowerCase());
-            aliases.remove(name.toLowerCase());
-        } catch (Exception ex) {
-
-        }
-    }
 
     private SimpleCommandMap getCommandMap() {
         try {
@@ -55,36 +39,27 @@ public class CommandManager {
         return null;
     }
 
-    private void registerCommand(String name, CommandExecutor exc, JavaPlugin plugin) throws Exception {
-        PluginCommand command = Bukkit.getPluginCommand(name.toLowerCase());
-        if (command != null && !command.getName().equalsIgnoreCase(name))
-            command = null;
-        if (command == null) {
-            Constructor<?> constructor = PluginCommand.class.getDeclaredConstructor(String.class, Plugin.class);
-            constructor.setAccessible(true);
-            command = (PluginCommand) constructor.newInstance(name, plugin);
+    public ConfigurationSection getConfigSection(String commandName) {
+        ConfigurationSection section = config.getConfigurationSection(commandName);
+        if (section == null) {
+            section = config.createSection(commandName);
         }
-        command.setExecutor(exc);
+        return section;
+    }
+
+    public void load(JavaPlugin plugin) {
+        configFile = new File(plugin.getDataFolder(), "commands.yml");
+        config = new YamlConfiguration();
         try {
-            Field field = exc.getClass().getDeclaredField("aliases");
-            if (field.get(exc) instanceof String[]) {
-                List<String> list = Arrays.asList((String[]) field.get(exc));
-                command.setAliases(list);
-            }
-        } catch (Exception ex) {
-            command.setAliases(new ArrayList<String>());
+            if (!configFile.exists())
+                save();
+            else
+                newFile = false;
+            config.load(configFile);
+            loadCommands(plugin, "me.libraryaddict.LibsCommands.Commands");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        if (command.getAliases() != null) {
-            for (String alias : command.getAliases())
-                unregisterCommand(alias);
-        }
-        try {
-            Field field = exc.getClass().getDeclaredField("description");
-            String string = (String) field.get(exc);
-            command.setDescription(ChatColor.translateAlternateColorCodes('&', string));
-        } catch (Exception ex) {
-        }
-        getCommandMap().register(name, command);
     }
 
     public boolean loadCommand(CommandExecutor exc, boolean save, JavaPlugin plugin) {
@@ -99,7 +74,7 @@ public class CommandManager {
         boolean modified = loadConfig(section, exc, commandName);
         if (section.getBoolean("CommandEnabled")) {
             try {
-                registerCommand(section.getString("CommandName"), exc, plugin);
+                registerCommand(section.getString("CommandName"), exc, plugin, false);
             } catch (Exception ex) {
                 System.out.print("[LibsCommands] Error while loading the command " + exc.getClass().getSimpleName() + ", "
                         + ex.getMessage());
@@ -111,6 +86,13 @@ public class CommandManager {
     }
 
     private void loadCommands(JavaPlugin plugin, String packageName) {
+        try {
+            Field commands = plugin.getDescription().getClass().getDeclaredField("commands");
+            commands.setAccessible(true);
+            commands.set(plugin.getDescription(), commandsMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         boolean saveConfig = false;
         for (Class commandClass : ClassGetter.getClassesForPackage(plugin, packageName)) {
             if (CommandExecutor.class.isAssignableFrom(commandClass) && !commandClass.equals("AACommand")) {
@@ -132,6 +114,7 @@ public class CommandManager {
                 }
             }
         }
+        getCommandMap().registerAll(plugin.getDescription().getName(), PluginCommandYamlParser.parse(plugin));
         if (saveConfig)
             save();
     }
@@ -198,27 +181,35 @@ public class CommandManager {
         return false;
     }
 
-    public ConfigurationSection getConfigSection(String commandName) {
-        ConfigurationSection section = config.getConfigurationSection(commandName);
-        if (section == null) {
-            section = config.createSection(commandName);
-        }
-        return section;
-    }
-
-    public void load(JavaPlugin plugin) {
-        configFile = new File(plugin.getDataFolder(), "commands.yml");
-        config = new YamlConfiguration();
+    private void registerCommand(final String name, final CommandExecutor exc, final JavaPlugin plugin, boolean isAlias)
+            throws Exception {
+        String desc = null;
+        if (!isAlias)
+            try {
+                Field field = exc.getClass().getDeclaredField("aliases");
+                if (field.get(exc) instanceof String[]) {
+                    List<String> aliases = Arrays.asList((String[]) field.get(exc));
+                    for (String alias : aliases) {
+                        registerCommand(alias, exc, plugin, true);
+                    }
+                }
+            } catch (Exception ex) {
+            }
         try {
-            if (!configFile.exists())
-                save();
-            else
-                newFile = false;
-            config.load(configFile);
-            loadCommands(plugin, "me.libraryaddict.LibsCommands.Commands");
-        } catch (Exception e) {
-            e.printStackTrace();
+            Field field = exc.getClass().getDeclaredField("description");
+            desc = ChatColor.translateAlternateColorCodes('&', (String) field.get(exc));
+        } catch (Exception ex) {
         }
+        HashMap<String, Object> newMap = new HashMap<String, Object>();
+        if (desc != null) {
+            newMap.put("description", desc);
+        }
+        commandsMap.put(name.toLowerCase(), newMap);
+        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+            public void run() {
+                plugin.getCommand(name.toLowerCase()).setExecutor(exc);
+            }
+        });
     }
 
     public void save() {
